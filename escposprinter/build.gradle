@@ -1,17 +1,18 @@
 plugins {
     id 'com.android.library'
     id 'maven-publish'
+    id 'org.jetbrains.kotlin.android'
 }
 
 def libraryVersionCode = 3003000
 def libraryVersionName = "3.3.0"
 
 android {
-    compileSdkVersion 33
+    compileSdk 34
 
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 33
+        minSdkVersion 24
+        targetSdkVersion 34
         versionCode libraryVersionCode
         versionName libraryVersionName
 
@@ -33,6 +34,7 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.zxing:core:3.4.0'
+    implementation 'androidx.core:core-ktx:+'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
