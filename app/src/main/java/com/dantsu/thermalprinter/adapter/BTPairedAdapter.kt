@@ -1,5 +1,6 @@
 package com.dantsu.thermalprinter.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -8,10 +9,10 @@ import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
 import com.dantsu.thermalprinter.databinding.ItemDeviceBinding
 
 
-class BTPairedAdapter(var list: Array<BluetoothConnection>) :
+class BTPairedAdapter(val list: Array<BluetoothConnection>, val onConnectClick: (model: BluetoothConnection) -> Unit) :
     RecyclerView.Adapter<BTPairedAdapter.MyViewHolder>() {
 
-    inner class MyViewHolder(binding: ItemDeviceBinding) : ViewHolder(binding.root)
+    inner class MyViewHolder(val binding: ItemDeviceBinding) : ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
         val binding = ItemDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -22,6 +23,13 @@ class BTPairedAdapter(var list: Array<BluetoothConnection>) :
         return list.size
     }
 
+    @SuppressLint("MissingPermission")
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
+        val model = list[position]
+        with(holder.binding) {
+            deviceName.setText(model.device.name)
+
+            btConnect.setOnClickListener { onConnectClick(model) }
+        }
     }
 }

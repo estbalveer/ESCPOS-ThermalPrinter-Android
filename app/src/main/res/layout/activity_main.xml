@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,113 +9,107 @@
     android:padding="20dp"
     tools:context=".MainActivity">
 
-    <TextView
-        style="@style/TextAppearance.AppCompat.Title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="Bluetooth" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginBottom="20dp"
-        android:orientation="vertical"
-        android:textAlignment="center">
+        android:orientation="vertical">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvBluetoothList"
+        <TextView
+            style="@style/TextAppearance.AppCompat.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="Bluetooth" />
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="181dp" />
-
-        <Button
-            android:id="@+id/button_bluetooth_browse"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginRight="5dp"
-            android:text="Default printer" />
+            android:layout_gravity="center"
+            android:layout_marginBottom="20dp"
+            android:orientation="vertical"
+            android:textAlignment="center">
 
-        <Button
-            android:id="@+id/button_bluetooth"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Print by bluetooth !" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvBluetoothList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
+        </LinearLayout>
 
-    </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@android:color/darker_gray" />
-
-    <TextView
-        style="@style/TextAppearance.AppCompat.Title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
-        android:text="USB" />
-
-    <Button
-        android:id="@+id/button_usb"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="Print by USB !" />
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@android:color/darker_gray" />
-
-    <TextView
-        style="@style/TextAppearance.AppCompat.Title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
-        android:text="LAN/WIFI" />
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray" />
 
         <TextView
+            style="@style/TextAppearance.AppCompat.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginRight="5dp"
-            android:text="IP :" />
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:text="USB" />
 
-        <EditText
-            android:id="@+id/edittext_tcp_ip"
-            android:layout_width="170dp"
+        <Button
+            android:id="@+id/button_usb"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:digits="0123456789."
-            android:inputType="number" />
+            android:layout_marginBottom="20dp"
+            android:text="Print by USB !" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray" />
 
         <TextView
+            style="@style/TextAppearance.AppCompat.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="20dp"
-            android:layout_marginRight="5dp"
-            android:text="Port :" />
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:text="LAN/WIFI" />
 
-        <EditText
-            android:id="@+id/edittext_tcp_port"
-            android:layout_width="80dp"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:inputType="number" />
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="5dp"
+                android:text="IP :" />
+
+            <EditText
+                android:id="@+id/edittext_tcp_ip"
+                android:layout_width="170dp"
+                android:layout_height="wrap_content"
+                android:digits="0123456789."
+                android:inputType="number" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="20dp"
+                android:layout_marginRight="5dp"
+                android:text="Port :" />
+
+            <EditText
+                android:id="@+id/edittext_tcp_port"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/button_tcp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="Print by TCP !" />
+
     </LinearLayout>
-
-    <Button
-        android:id="@+id/button_tcp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="Print by TCP !" />
-
-</LinearLayout>
+</ScrollView>

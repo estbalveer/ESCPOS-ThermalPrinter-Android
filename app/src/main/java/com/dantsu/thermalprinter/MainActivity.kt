@@ -44,10 +44,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding!!.root)
-        binding!!.buttonBluetoothBrowse.setOnClickListener { view: View? -> browseBluetoothDevice() }
-        binding!!.buttonBluetooth.setOnClickListener { view: View? -> printBluetooth() }
+//        binding!!.buttonBluetoothBrowse.setOnClickListener { view: View? -> browseBluetoothDevice() }
+//        binding!!.buttonBluetooth.setOnClickListener { view: View? -> printBluetooth() }
         binding!!.buttonUsb.setOnClickListener { view: View? -> printUsb() }
         binding!!.buttonTcp.setOnClickListener { view: View? -> printTcp() }
+
+        initBluetooth()
     }
 
     /*==============================================================================================
@@ -116,9 +118,14 @@ class MainActivity : AppCompatActivity() {
     private var selectedDevice: BluetoothConnection? = null
     private fun initBluetooth() {
         val bluetoothDevicesList = BluetoothPrintersConnections().list
-        val adapter = BTPairedAdapter(bluetoothDevicesList!!)
-        binding!!.rvBluetoothList.adapter = adapter
+        if (bluetoothDevicesList != null) {
+            val adapter = BTPairedAdapter(bluetoothDevicesList) {
+                printBluetooth(it)
+            }
+            binding!!.rvBluetoothList.adapter = adapter
+        }
     }
+
 
     fun browseBluetoothDevice() {
         checkBluetoothPermissions {
@@ -141,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         bluetoothDevicesList[index]
                     }
-                    binding!!.buttonBluetoothBrowse.text = items[i1]
+//                    binding!!.buttonBluetoothBrowse.text = items[i1]
                 }
                 val alert = alertDialog.create()
                 alert.setCanceledOnTouchOutside(false)
@@ -150,7 +157,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun printBluetooth() {
+    private fun printBluetooth(device: BluetoothConnection) {
         checkBluetoothPermissions {
             AsyncBluetoothEscPosPrint(
                 this,
@@ -173,7 +180,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             )
-                .execute(getAsyncEscPosPrinter(selectedDevice))
+                .execute(getAsyncEscPosPrinter(device))
         }
     }
 
