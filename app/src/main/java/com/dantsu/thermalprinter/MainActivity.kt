@@ -105,14 +105,20 @@ class MainActivity : AppCompatActivity() {
         val bluetoothDevicesList = BluetoothPrintersConnections().list
         val bTPrinterManager = BTPrinterManager()
         if (bluetoothDevicesList != null) {
-            val adapter = BTPairedAdapter({
-//                printBluetooth(it)
-                bTPrinterManager.connectPrinter(it.bluetoothConnection!!)
-            }, {
-                bTPrinterManager.printText(
-                    printText.trimIndent()
-                )
-            })
+            val adapter = BTPairedAdapter()
+            adapter.setClickListener(
+                onConnectClick = { model ->
+                    bTPrinterManager.connectPrinter(model.bluetoothConnection!!) {
+                        model.printer = it
+                        model.connectionStatus = true
+                        adapter.notifyDataSetChanged()
+                    }
+                },
+                onPrintClick = {
+                    bTPrinterManager.printText(it.printer!!, printText.trimIndent())
+
+                }
+            )
 
             val list = bluetoothDevicesList.map { BTDevicesModel(it, false) }
             adapter.setList(ArrayList(list))

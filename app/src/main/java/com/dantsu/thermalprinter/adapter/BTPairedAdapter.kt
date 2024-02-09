@@ -6,23 +6,28 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
 import com.dantsu.thermalprinter.R
 import com.dantsu.thermalprinter.databinding.ItemDeviceBinding
 import com.dantsu.thermalprinter.model.BTDevicesModel
 
 
-class BTPairedAdapter(
-    val onConnectClick: (model: BTDevicesModel) -> Unit,
-    val onPrintClick: (model: BTDevicesModel) -> Unit
-) :
-    RecyclerView.Adapter<BTPairedAdapter.MyViewHolder>() {
+class BTPairedAdapter : RecyclerView.Adapter<BTPairedAdapter.MyViewHolder>() {
 
     private var list: ArrayList<BTDevicesModel> = arrayListOf()
+    var onConnectClick: (model: BTDevicesModel) -> Unit = {}
+    var onPrintClick: (model: BTDevicesModel) -> Unit = {}
 
     fun setList(list: ArrayList<BTDevicesModel>) {
         this.list = list
         notifyDataSetChanged()
+    }
+
+    fun setClickListener(
+        onConnectClick: (model: BTDevicesModel) -> Unit = {},
+        onPrintClick: (model: BTDevicesModel) -> Unit = {}
+    ) {
+        this.onConnectClick = onConnectClick
+        this.onPrintClick = onPrintClick
     }
 
     inner class MyViewHolder(val binding: ItemDeviceBinding) : ViewHolder(binding.root)
