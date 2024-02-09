@@ -18,6 +18,7 @@ import android.os.Parcelable
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -36,152 +37,111 @@ import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
 import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
+import java.util.ArrayList
+import java.util.Collections
 import java.util.Date
 
 class MainActivity : AppCompatActivity() {
     private var binding: ActivityMainBinding? = null
+    private var selectedDevice: BluetoothConnection? = null
+
+    private val permissions = when {
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> arrayOf(
+            Manifest.permission.BLUETOOTH,
+            Manifest.permission.BLUETOOTH_ADMIN
+        )
+
+        else -> arrayOf(
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN
+        )
+    }
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            if (permissions.all { it.value }) {
+                onBluetoothPermissionsGranted()
+            } else {
+                // Handle the case where not all permissions were granted
+            }
+        }
+
+
+    private val printText = """
+                [L]
+                [C]<u><font size='big'>ORDER N°045</font></u>
+                """
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding!!.root)
-//        binding!!.buttonBluetoothBrowse.setOnClickListener { view: View? -> browseBluetoothDevice() }
-//        binding!!.buttonBluetooth.setOnClickListener { view: View? -> printBluetooth() }
         binding!!.buttonUsb.setOnClickListener { view: View? -> printUsb() }
         binding!!.buttonTcp.setOnClickListener { view: View? -> printTcp() }
 
-        initBluetooth()
+        checkBluetoothPermissions()
     }
 
     /*==============================================================================================
     ======================================BLUETOOTH PART============================================
     ==============================================================================================*/
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (grantResults.size > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            when (requestCode) {
-                PERMISSION_BLUETOOTH, PERMISSION_BLUETOOTH_ADMIN, PERMISSION_BLUETOOTH_CONNECT, PERMISSION_BLUETOOTH_SCAN -> checkBluetoothPermissions {}
-            }
-        }
-    }
-
-    fun checkBluetoothPermissions(onBluetoothPermissionsGranted: () -> Unit) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.BLUETOOTH),
-                PERMISSION_BLUETOOTH
-            )
-        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_ADMIN
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.BLUETOOTH_ADMIN),
-                PERMISSION_BLUETOOTH_ADMIN
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.BLUETOOTH_CONNECT),
-                PERMISSION_BLUETOOTH_CONNECT
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.BLUETOOTH_SCAN),
-                PERMISSION_BLUETOOTH_SCAN
-            )
+    private fun checkBluetoothPermissions() {
+        if (permissions.any {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }) {
+            requestPermissionLauncher.launch(permissions)
         } else {
             onBluetoothPermissionsGranted()
         }
     }
 
-    private var selectedDevice: BluetoothConnection? = null
+    private fun onBluetoothPermissionsGranted() {
+        initBluetooth()
+    }
+
     private fun initBluetooth() {
         val bluetoothDevicesList = BluetoothPrintersConnections().list
+        val bTPrinterManager = BTPrinterManager()
         if (bluetoothDevicesList != null) {
-            val adapter = BTPairedAdapter(bluetoothDevicesList) {
-                printBluetooth(it)
-            }
+            val adapter = BTPairedAdapter({
+//                printBluetooth(it)
+                bTPrinterManager.connectPrinter(it)
+            }, {
+                bTPrinterManager.printText(
+                    printText.trimIndent()
+                )
+            })
+
+            adapter.setList(ArrayList(bluetoothDevicesList.asList()))
             binding!!.rvBluetoothList.adapter = adapter
         }
     }
 
 
-    fun browseBluetoothDevice() {
-        checkBluetoothPermissions {
-            val bluetoothDevicesList = BluetoothPrintersConnections().list
-            if (bluetoothDevicesList != null) {
-                val items = arrayOfNulls<String>(bluetoothDevicesList.size + 1)
-                items[0] = "Default printer"
-                var i = 0
-                for (device in bluetoothDevicesList) {
-                    items[++i] = device.device.name
-                }
-                val alertDialog = AlertDialog.Builder(this@MainActivity)
-                alertDialog.setTitle("Bluetooth printer selection")
-                alertDialog.setItems(
-                    items
-                ) { dialogInterface: DialogInterface?, i1: Int ->
-                    val index = i1 - 1
-                    selectedDevice = if (index == -1) {
-                        null
-                    } else {
-                        bluetoothDevicesList[index]
-                    }
-//                    binding!!.buttonBluetoothBrowse.text = items[i1]
-                }
-                val alert = alertDialog.create()
-                alert.setCanceledOnTouchOutside(false)
-                alert.show()
-            }
-        }
-    }
-
     private fun printBluetooth(device: BluetoothConnection) {
-        checkBluetoothPermissions {
-            AsyncBluetoothEscPosPrint(
-                this,
-                object : OnPrintFinished() {
-                    override fun onError(
-                        asyncEscPosPrinter: AsyncEscPosPrinter,
-                        codeException: Int
-                    ) {
-                        Log.e(
-                            "Async.OnPrintFinished",
-                            "AsyncEscPosPrint.OnPrintFinished : An error occurred !"
-                        )
-                    }
-
-                    override fun onSuccess(asyncEscPosPrinter: AsyncEscPosPrinter) {
-                        Log.i(
-                            "Async.OnPrintFinished",
-                            "AsyncEscPosPrint.OnPrintFinished : Print is finished !"
-                        )
-                    }
+        AsyncBluetoothEscPosPrint(
+            this,
+            object : OnPrintFinished() {
+                override fun onError(
+                    asyncEscPosPrinter: AsyncEscPosPrinter,
+                    codeException: Int
+                ) {
+                    Log.e(
+                        "Async.OnPrintFinished",
+                        "AsyncEscPosPrint.OnPrintFinished : An error occurred !"
+                    )
                 }
-            )
-                .execute(getAsyncEscPosPrinter(device))
-        }
+
+                override fun onSuccess(asyncEscPosPrinter: AsyncEscPosPrinter) {
+                    Log.i(
+                        "Async.OnPrintFinished",
+                        "AsyncEscPosPrint.OnPrintFinished : Print is finished !"
+                    )
+                }
+            }
+        )
+            .execute(getAsyncEscPosPrinter(device))
     }
 
     private val usbReceiver: BroadcastReceiver = object : BroadcastReceiver() {

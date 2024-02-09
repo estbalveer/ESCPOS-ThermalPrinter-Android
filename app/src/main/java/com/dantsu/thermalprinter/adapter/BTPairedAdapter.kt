@@ -9,8 +9,18 @@ import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
 import com.dantsu.thermalprinter.databinding.ItemDeviceBinding
 
 
-class BTPairedAdapter(val list: Array<BluetoothConnection>, val onConnectClick: (model: BluetoothConnection) -> Unit) :
+class BTPairedAdapter(
+    val onConnectClick: (model: BluetoothConnection) -> Unit,
+    val onPrintClick: (model: BluetoothConnection) -> Unit
+) :
     RecyclerView.Adapter<BTPairedAdapter.MyViewHolder>() {
+
+    private var list: ArrayList<BluetoothConnection> = arrayListOf()
+
+    fun setList(list: ArrayList<BluetoothConnection>) {
+        this.list = list
+        notifyDataSetChanged()
+    }
 
     inner class MyViewHolder(val binding: ItemDeviceBinding) : ViewHolder(binding.root)
 
@@ -30,6 +40,7 @@ class BTPairedAdapter(val list: Array<BluetoothConnection>, val onConnectClick: 
             deviceName.setText(model.device.name)
 
             btConnect.setOnClickListener { onConnectClick(model) }
+            btPrint.setOnClickListener { onPrintClick(model) }
         }
     }
 }
