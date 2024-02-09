@@ -36,6 +36,7 @@ import com.dantsu.thermalprinter.async.AsyncEscPosPrinter
 import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
 import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
+import com.dantsu.thermalprinter.model.BTDevicesModel
 import java.text.SimpleDateFormat
 import java.util.ArrayList
 import java.util.Collections
@@ -106,15 +107,17 @@ class MainActivity : AppCompatActivity() {
         if (bluetoothDevicesList != null) {
             val adapter = BTPairedAdapter({
 //                printBluetooth(it)
-                bTPrinterManager.connectPrinter(it)
+                bTPrinterManager.connectPrinter(it.bluetoothConnection!!)
             }, {
                 bTPrinterManager.printText(
                     printText.trimIndent()
                 )
             })
 
-            adapter.setList(ArrayList(bluetoothDevicesList.asList()))
+            val list = bluetoothDevicesList.map { BTDevicesModel(it, false) }
+            adapter.setList(ArrayList(list))
             binding!!.rvBluetoothList.adapter = adapter
+            adapter.onConnectClick
         }
     }
 
