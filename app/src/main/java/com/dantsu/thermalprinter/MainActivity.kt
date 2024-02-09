@@ -4,9 +4,9 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.app.PendingIntent
+import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -20,17 +20,14 @@ import android.util.Log
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.dantsu.escposprinter.connection.DeviceConnection
-import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import com.dantsu.escposprinter.connection.tcp.TcpConnection
 import com.dantsu.escposprinter.connection.usb.UsbConnection
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import com.dantsu.thermalprinter.adapter.BTPairedAdapter
-import com.dantsu.thermalprinter.async.AsyncBluetoothEscPosPrint
 import com.dantsu.thermalprinter.async.AsyncEscPosPrint.OnPrintFinished
 import com.dantsu.thermalprinter.async.AsyncEscPosPrinter
 import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
@@ -38,13 +35,12 @@ import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
 import com.dantsu.thermalprinter.model.BTDevicesModel
 import java.text.SimpleDateFormat
-import java.util.ArrayList
-import java.util.Collections
 import java.util.Date
 
 class MainActivity : AppCompatActivity() {
-    private var binding: ActivityMainBinding? = null
-    private var selectedDevice: BluetoothConnection? = null
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var bTPairedAdapter: BTPairedAdapter
+    private var btDeviceList: ArrayList<BTDevicesModel> = arrayListOf()
 
     private val permissions = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> arrayOf(
@@ -76,10 +72,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding!!.root)
-        binding!!.buttonUsb.setOnClickListener { view: View? -> printUsb() }
-        binding!!.buttonTcp.setOnClickListener { view: View? -> printTcp() }
+        setContentView(binding.root)
+        binding.buttonUsb.setOnClickListener { view: View? -> printUsb() }
+        binding.buttonTcp.setOnClickListener { view: View? -> printTcp() }
 
+        initViews()
         checkBluetoothPermissions()
     }
 
@@ -101,57 +98,51 @@ class MainActivity : AppCompatActivity() {
         initBluetooth()
     }
 
-    private fun initBluetooth() {
-        val bluetoothDevicesList = BluetoothPrintersConnections().list
+    private fun initViews() {
         val bTPrinterManager = BTPrinterManager()
-        if (bluetoothDevicesList != null) {
-            val adapter = BTPairedAdapter()
-            adapter.setClickListener(
-                onConnectClick = { model ->
-                    bTPrinterManager.connectPrinter(model.bluetoothConnection!!) {
-                        model.printer = it
-                        model.connectionStatus = true
-                        adapter.notifyDataSetChanged()
-                    }
-                },
-                onPrintClick = {
-                    bTPrinterManager.printText(it.printer!!, printText.trimIndent())
+        bTPairedAdapter = BTPairedAdapter()
+        binding.rvBluetoothList.adapter = bTPairedAdapter
 
+        bTPairedAdapter.setClickListener(
+            onConnectClick = { model ->
+                bTPrinterManager.connectPrinter(model.bluetoothConnection!!) {
+                    model.printer = it
+                    model.connectionStatus = true
+                    bTPairedAdapter.notifyDataSetChanged()
                 }
-            )
+            },
+            onPrintClick = {
+                bTPrinterManager.printText(it.printer!!, printText.trimIndent())
 
-            val list = bluetoothDevicesList.map { BTDevicesModel(it, false) }
-            adapter.setList(ArrayList(list))
-            binding!!.rvBluetoothList.adapter = adapter
-            adapter.onConnectClick
-        }
-    }
-
-
-    private fun printBluetooth(device: BluetoothConnection) {
-        AsyncBluetoothEscPosPrint(
-            this,
-            object : OnPrintFinished() {
-                override fun onError(
-                    asyncEscPosPrinter: AsyncEscPosPrinter,
-                    codeException: Int
-                ) {
-                    Log.e(
-                        "Async.OnPrintFinished",
-                        "AsyncEscPosPrint.OnPrintFinished : An error occurred !"
-                    )
-                }
-
-                override fun onSuccess(asyncEscPosPrinter: AsyncEscPosPrinter) {
-                    Log.i(
-                        "Async.OnPrintFinished",
-                        "AsyncEscPosPrint.OnPrintFinished : Print is finished !"
-                    )
-                }
             }
         )
-            .execute(getAsyncEscPosPrinter(device))
     }
+
+    private fun initBluetooth() {
+        val bluetoothDevicesList = BluetoothPrintersConnections().list ?: emptyArray()
+        btDeviceList = ArrayList(bluetoothDevicesList.map { BTDevicesModel(it, false) })
+        bTPairedAdapter.setList(btDeviceList)
+
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+        }
+        val bluetoothReceiver = BTReceiver { bluetoothDevice ->
+            btDeviceList.find { it.bluetoothConnection?.device?.address == bluetoothDevice.address }
+                ?.let {
+                    it.printer?.disconnectPrinter()
+                    it.printer = null
+                    it.connectionStatus = false
+                    bTPairedAdapter.notifyDataSetChanged()
+                }
+        }
+        registerReceiver(bluetoothReceiver, filter)
+    }
+
+
+    /*==============================================================================================
+===========================================USB PART=============================================
+==============================================================================================*/
 
     private val usbReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -322,9 +313,6 @@ class MainActivity : AppCompatActivity() {
         const val PERMISSION_BLUETOOTH_CONNECT = 3
         const val PERMISSION_BLUETOOTH_SCAN = 4
 
-        /*==============================================================================================
-    ===========================================USB PART=============================================
-    ==============================================================================================*/
         private const val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
     }
 }
