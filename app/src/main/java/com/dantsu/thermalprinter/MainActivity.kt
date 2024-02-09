@@ -18,6 +18,7 @@ import android.os.Parcelable
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -28,19 +29,28 @@ import com.dantsu.escposprinter.connection.usb.UsbConnection
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import com.dantsu.thermalprinter.adapter.BTPairedAdapter
+import com.dantsu.thermalprinter.adapter.UsbAdapter
 import com.dantsu.thermalprinter.async.AsyncEscPosPrint.OnPrintFinished
 import com.dantsu.thermalprinter.async.AsyncEscPosPrinter
 import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
 import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
 import com.dantsu.thermalprinter.model.BTDevicesModel
+import com.dantsu.thermalprinter.model.USBDevicesModel
 import java.text.SimpleDateFormat
 import java.util.Date
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private const val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
+    }
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var bTPairedAdapter: BTPairedAdapter
     private var btDeviceList: ArrayList<BTDevicesModel> = arrayListOf()
+
+    private lateinit var usbAdapter: UsbAdapter
+    private var usbDeviceList: ArrayList<USBDevicesModel> = arrayListOf()
 
     private val permissions = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> arrayOf(
@@ -73,11 +83,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.buttonUsb.setOnClickListener { view: View? -> printUsb() }
         binding.buttonTcp.setOnClickListener { view: View? -> printTcp() }
 
         initViews()
         checkBluetoothPermissions()
+        initUsb()
     }
 
     /*==============================================================================================
@@ -99,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
+        // bluetooth related work
         val bTPrinterManager = BTPrinterManager()
         bTPairedAdapter = BTPairedAdapter()
         binding.rvBluetoothList.adapter = bTPairedAdapter
@@ -113,6 +124,25 @@ class MainActivity : AppCompatActivity() {
             },
             onPrintClick = {
                 bTPrinterManager.printText(it.printer!!, printText.trimIndent())
+
+            }
+        )
+
+        // usb related work
+//        val usbAdapter = BTPrinterManager()
+        usbAdapter = UsbAdapter()
+        binding.rvUSBList.adapter = usbAdapter
+
+        usbAdapter.setClickListener(
+            onRequestClick = {
+                askUsbPermission()
+            },
+            onConnectClick = { model ->
+                connectUsbPrinter(model.usbConnection!!.device)
+                // get callback and change status
+            },
+            onPrintClick = {
+//                bTPrinterManager.printText(it.printer!!, printText.trimIndent())
 
             }
         )
@@ -139,50 +169,43 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(bluetoothReceiver, filter)
     }
 
+    private fun showToast(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+    }
+
 
     /*==============================================================================================
-===========================================USB PART=============================================
-==============================================================================================*/
+    ===========================================USB PART=============================================
+    ==============================================================================================*/
+
+    private fun initUsb() {
+        val usbConnection = UsbPrintersConnections(this).list
+        val usbManager = this.getSystemService(USB_SERVICE) as UsbManager
+        if (usbConnection != null) {
+            usbDeviceList = ArrayList(usbConnection.map {
+                USBDevicesModel(it, false, hasPermission = usbManager.hasPermission(it.device))
+            }
+            )
+            usbAdapter.setList(usbDeviceList)
+        }
+    }
 
     private val usbReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val action = intent.action
             if (ACTION_USB_PERMISSION == action) {
                 synchronized(this) {
-                    val usbManager = getSystemService(USB_SERVICE) as UsbManager
                     val usbDevice =
                         intent.getParcelableExtra<Parcelable>(UsbManager.EXTRA_DEVICE) as UsbDevice?
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                        if (usbManager != null && usbDevice != null) {
-                            AsyncUsbEscPosPrint(
-                                context,
-                                object : OnPrintFinished() {
-                                    override fun onError(
-                                        asyncEscPosPrinter: AsyncEscPosPrinter,
-                                        codeException: Int
-                                    ) {
-                                        Log.e(
-                                            "Async.OnPrintFinished",
-                                            "AsyncEscPosPrint.OnPrintFinished : An error occurred !"
-                                        )
-                                    }
-
-                                    override fun onSuccess(asyncEscPosPrinter: AsyncEscPosPrinter) {
-                                        Log.i(
-                                            "Async.OnPrintFinished",
-                                            "AsyncEscPosPrint.OnPrintFinished : Print is finished !"
-                                        )
-                                    }
+                        if (usbDevice != null) {
+                            usbDeviceList.find { it.usbConnection?.device?.deviceId == usbDevice.deviceId }
+                                ?.let {
+                                    it.hasPermission = true
+                                    usbAdapter.notifyDataSetChanged()
                                 }
-                            )
-                                .execute(
-                                    getAsyncEscPosPrinter(
-                                        UsbConnection(
-                                            usbManager,
-                                            usbDevice
-                                        )
-                                    )
-                                )
+
+//                            connectUsbPrinter(usbDevice)
                         }
                     }
                 }
@@ -190,10 +213,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun printUsb() {
+    private fun connectUsbPrinter(usbDevice: UsbDevice) {
+        val usbManager = getSystemService(USB_SERVICE) as UsbManager
+        AsyncUsbEscPosPrint(
+            this,
+            object : OnPrintFinished() {
+                override fun onError(
+                    asyncEscPosPrinter: AsyncEscPosPrinter,
+                    codeException: Int
+                ) {
+                    Log.e(
+                        "Async.OnPrintFinished",
+                        "AsyncEscPosPrint.OnPrintFinished : An error occurred !"
+                    )
+                }
+
+                override fun onSuccess(asyncEscPosPrinter: AsyncEscPosPrinter) {
+                    Log.i(
+                        "Async.OnPrintFinished",
+                        "AsyncEscPosPrint.OnPrintFinished : Print is finished !"
+                    )
+                }
+            }
+        )
+            .execute(
+                getAsyncEscPosPrinter(
+                    UsbConnection(
+                        usbManager,
+                        usbDevice
+                    )
+                )
+            )
+    }
+
+    private fun askUsbPermission() {
         val usbConnection = UsbPrintersConnections.selectFirstConnected(this)
         val usbManager = this.getSystemService(USB_SERVICE) as UsbManager
-        if (usbConnection == null || usbManager == null) {
+        if (usbConnection == null) {
             AlertDialog.Builder(this)
                 .setTitle("USB Connection")
                 .setMessage("No USB printer found.")
@@ -305,14 +361,5 @@ class MainActivity : AppCompatActivity() {
                 
                 """.trimIndent()
         )
-    }
-
-    companion object {
-        const val PERMISSION_BLUETOOTH = 1
-        const val PERMISSION_BLUETOOTH_ADMIN = 2
-        const val PERMISSION_BLUETOOTH_CONNECT = 3
-        const val PERMISSION_BLUETOOTH_SCAN = 4
-
-        private const val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
     }
 }
