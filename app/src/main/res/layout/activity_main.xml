@@ -111,5 +111,12 @@
             android:layout_marginBottom="20dp"
             android:text="Print by TCP !" />
 
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvLANList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
     </LinearLayout>
 </ScrollView>

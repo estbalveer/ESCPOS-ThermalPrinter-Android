@@ -29,6 +29,7 @@ import com.dantsu.escposprinter.connection.usb.UsbConnection
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import com.dantsu.thermalprinter.adapter.BTPairedAdapter
+import com.dantsu.thermalprinter.adapter.LANAdapter
 import com.dantsu.thermalprinter.adapter.UsbAdapter
 import com.dantsu.thermalprinter.async.AsyncEscPosPrint.OnPrintFinished
 import com.dantsu.thermalprinter.async.AsyncEscPosPrinter
@@ -36,6 +37,7 @@ import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
 import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
 import com.dantsu.thermalprinter.model.BTDevicesModel
+import com.dantsu.thermalprinter.model.LANDevicesModel
 import com.dantsu.thermalprinter.model.USBDevicesModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -51,6 +53,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var usbAdapter: UsbAdapter
     private var usbDeviceList: ArrayList<USBDevicesModel> = arrayListOf()
+
+    private lateinit var lanAdapter: LANAdapter
+    private var lanDeviceList: ArrayList<LANDevicesModel> = arrayListOf()
 
     private val permissions = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> arrayOf(
@@ -129,7 +134,6 @@ class MainActivity : AppCompatActivity() {
         )
 
         // usb related work
-//        val usbAdapter = BTPrinterManager()
         usbAdapter = UsbAdapter()
         binding.rvUSBList.adapter = usbAdapter
 
@@ -141,6 +145,17 @@ class MainActivity : AppCompatActivity() {
                 connectUsbPrinter(model.usbConnection!!.device)
                 // get callback and change status
             },
+            onPrintClick = {
+//                bTPrinterManager.printText(it.printer!!, printText.trimIndent())
+
+            }
+        )
+
+        // usb related work
+        lanAdapter = LANAdapter()
+        binding.rvLANList.adapter = lanAdapter
+
+        lanAdapter.setClickListener(
             onPrintClick = {
 //                bTPrinterManager.printText(it.printer!!, printText.trimIndent())
 
