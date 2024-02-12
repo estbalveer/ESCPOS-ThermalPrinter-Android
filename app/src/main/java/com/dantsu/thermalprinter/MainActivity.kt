@@ -3,18 +3,13 @@ package com.dantsu.thermalprinter
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.app.PendingIntent
 import android.bluetooth.BluetoothDevice
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Parcelable
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
@@ -36,6 +31,10 @@ import com.dantsu.thermalprinter.async.AsyncEscPosPrinter
 import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
 import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
+import com.dantsu.thermalprinter.manager.BTPrinterManager
+import com.dantsu.thermalprinter.manager.BTReceiver
+import com.dantsu.thermalprinter.manager.USBPrinterManager
+import com.dantsu.thermalprinter.manager.USBReceiver
 import com.dantsu.thermalprinter.model.BTDevicesModel
 import com.dantsu.thermalprinter.model.LANDevicesModel
 import com.dantsu.thermalprinter.model.USBDevicesModel
@@ -44,7 +43,6 @@ import java.util.Date
 
 class MainActivity : AppCompatActivity() {
     companion object {
-        private const val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -81,6 +79,10 @@ class MainActivity : AppCompatActivity() {
 
     private val printText = """
                 [L]
+                [C]<u><font size='big'>ORDER N°045</font></u>
+                [C]<u><font size='big'>ORDER N°045</font></u>
+                [C]<u><font size='big'>ORDER N°045</font></u>
+                [C]<u><font size='big'>ORDER N°045</font></u>
                 [C]<u><font size='big'>ORDER N°045</font></u>
                 """
 
@@ -134,20 +136,33 @@ class MainActivity : AppCompatActivity() {
         )
 
         // usb related work
+        val usbPrinterManager = USBPrinterManager()
+        usbPrinterManager.setOnOnPermissionGranted { usbDevice ->
+            usbDeviceList.find { it.usbConnection?.device?.deviceId == usbDevice?.deviceId }
+                ?.let {
+                    it.hasPermission = true
+                    usbAdapter.notifyDataSetChanged()
+                }
+        }
         usbAdapter = UsbAdapter()
         binding.rvUSBList.adapter = usbAdapter
 
         usbAdapter.setClickListener(
             onRequestClick = {
-                askUsbPermission()
+                it.usbConnection?.let { it1 -> usbPrinterManager.askUsbPermission(this, it1) }
             },
             onConnectClick = { model ->
-                connectUsbPrinter(model.usbConnection!!.device)
+                model.usbConnection?.let {
+                    usbPrinterManager.connectPrinter(it) {
+                        model.printer = it
+                        model.connectionStatus = true
+                        usbAdapter.notifyDataSetChanged()
+                    }
+                }
                 // get callback and change status
             },
             onPrintClick = {
-//                bTPrinterManager.printText(it.printer!!, printText.trimIndent())
-
+                usbPrinterManager.printText(it.printer!!, printText.trimIndent())
             }
         )
 
@@ -193,7 +208,7 @@ class MainActivity : AppCompatActivity() {
     ===========================================USB PART=============================================
     ==============================================================================================*/
 
-    private fun initUsb() {
+    private fun setUsbAdapter() {
         val usbConnection = UsbPrintersConnections(this).list
         val usbManager = this.getSystemService(USB_SERVICE) as UsbManager
         if (usbConnection != null) {
@@ -205,27 +220,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val usbReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val action = intent.action
-            if (ACTION_USB_PERMISSION == action) {
-                synchronized(this) {
-                    val usbDevice =
-                        intent.getParcelableExtra<Parcelable>(UsbManager.EXTRA_DEVICE) as UsbDevice?
-                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                        if (usbDevice != null) {
-                            usbDeviceList.find { it.usbConnection?.device?.deviceId == usbDevice.deviceId }
-                                ?.let {
-                                    it.hasPermission = true
-                                    usbAdapter.notifyDataSetChanged()
-                                }
+    private fun initUsb() {
+        setUsbAdapter()
 
-//                            connectUsbPrinter(usbDevice)
-                        }
-                    }
-                }
-            }
+        val filter = IntentFilter()
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+
+        val usbReceiver = USBReceiver {
+            setUsbAdapter()
         }
+        registerReceiver(usbReceiver, filter)
     }
 
     private fun connectUsbPrinter(usbDevice: UsbDevice) {
@@ -261,27 +266,6 @@ class MainActivity : AppCompatActivity() {
             )
     }
 
-    private fun askUsbPermission() {
-        val usbConnection = UsbPrintersConnections.selectFirstConnected(this)
-        val usbManager = this.getSystemService(USB_SERVICE) as UsbManager
-        if (usbConnection == null) {
-            AlertDialog.Builder(this)
-                .setTitle("USB Connection")
-                .setMessage("No USB printer found.")
-                .show()
-            return
-        }
-        val permissionIntent = PendingIntent.getBroadcast(
-            this,
-            0,
-            Intent(ACTION_USB_PERMISSION),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-        )
-        val filter = IntentFilter(ACTION_USB_PERMISSION)
-        registerReceiver(usbReceiver, filter)
-        usbManager.requestPermission(usbConnection.device, permissionIntent)
-    }
-
     /*==============================================================================================
     =========================================TCP PART===============================================
     ==============================================================================================*/
@@ -311,8 +295,8 @@ class MainActivity : AppCompatActivity() {
                 .execute(
                     getAsyncEscPosPrinter(
                         TcpConnection(
-                            binding!!.edittextTcpIp.text.toString(),
-                            binding!!.edittextTcpPort.text.toString().toInt()
+                            binding.edittextTcpIp.text.toString(),
+                            binding.edittextTcpPort.text.toString().toInt()
                         )
                     )
                 )

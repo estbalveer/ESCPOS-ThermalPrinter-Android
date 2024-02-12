@@ -1,4 +1,4 @@
-package com.dantsu.thermalprinter
+package com.dantsu.thermalprinter.manager
 
 import android.util.Log
 import com.dantsu.escposprinter.EscPosCharsetEncoding
@@ -9,9 +9,7 @@ import com.dantsu.escposprinter.exceptions.EscPosConnectionException
 import com.dantsu.escposprinter.exceptions.EscPosEncodingException
 import com.dantsu.escposprinter.exceptions.EscPosParserException
 
-class USBPrinterManager {
-
-    private var onConnectionChange: (status: Boolean) -> Unit = {}
+class BTPrinterManager {
 
     fun connectPrinter(
         deviceConnection: BluetoothConnection,
@@ -37,10 +35,6 @@ class USBPrinterManager {
             callback(null)
             e.printStackTrace()
         }
-    }
-
-    fun addConnectionListener(onConnectionChange: (status: Boolean?) -> Unit = {}) {
-        this.onConnectionChange = onConnectionChange
     }
 
     fun printText(printer: EscPosPrinter, textsToPrint: String) {

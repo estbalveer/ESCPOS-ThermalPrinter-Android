@@ -1,4 +1,4 @@
-package com.dantsu.thermalprinter
+package com.dantsu.thermalprinter.manager
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
