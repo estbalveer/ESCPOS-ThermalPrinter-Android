@@ -46,7 +46,7 @@ class LANAdapter : RecyclerView.Adapter<LANAdapter.MyViewHolder>() {
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
         val model = list[position]
         with(holder.binding) {
-            deviceName.setText(model.bluetoothConnection?.device?.name)
+            deviceName.setText(model.address)
             if (model.connectionStatus) {
                 circle.setBackgroundResource(R.drawable.circle_green)
                 btConnect.visibility = View.GONE

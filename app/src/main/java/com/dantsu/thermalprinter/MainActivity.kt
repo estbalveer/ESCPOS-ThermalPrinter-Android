@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.dantsu.escposprinter.connection.DeviceConnection
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import com.dantsu.escposprinter.connection.tcp.TcpConnection
@@ -33,11 +34,15 @@ import com.dantsu.thermalprinter.async.AsyncUsbEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
 import com.dantsu.thermalprinter.manager.BTPrinterManager
 import com.dantsu.thermalprinter.manager.BTReceiver
+import com.dantsu.thermalprinter.manager.LanPrinterManager
 import com.dantsu.thermalprinter.manager.USBPrinterManager
 import com.dantsu.thermalprinter.manager.USBReceiver
 import com.dantsu.thermalprinter.model.BTDevicesModel
 import com.dantsu.thermalprinter.model.LANDevicesModel
 import com.dantsu.thermalprinter.model.USBDevicesModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -90,7 +95,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.buttonTcp.setOnClickListener { view: View? -> printTcp() }
+
+        binding.btAdd.setOnClickListener { view: View? -> addLanDevice() }
 
         initViews()
         checkBluetoothPermissions()
@@ -125,7 +131,7 @@ class MainActivity : AppCompatActivity() {
             onConnectClick = { model ->
                 bTPrinterManager.connectPrinter(model.bluetoothConnection!!) {
                     model.printer = it
-                    model.connectionStatus = true
+                    model.connectionStatus = it != null
                     bTPairedAdapter.notifyDataSetChanged()
                 }
             },
@@ -155,7 +161,7 @@ class MainActivity : AppCompatActivity() {
                 model.usbConnection?.let {
                     usbPrinterManager.connectPrinter(it) {
                         model.printer = it
-                        model.connectionStatus = true
+                        model.connectionStatus = it != null
                         usbAdapter.notifyDataSetChanged()
                     }
                 }
@@ -167,12 +173,25 @@ class MainActivity : AppCompatActivity() {
         )
 
         // usb related work
+        val lanPrinterManager = LanPrinterManager()
         lanAdapter = LANAdapter()
         binding.rvLANList.adapter = lanAdapter
 
         lanAdapter.setClickListener(
+            onConnectClick = { model ->
+                model.tcpConnection?.let { it1 ->
+//                    connectLan(it1)
+                    lanPrinterManager.connectPrinter(it1) {
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            model.printer = it
+                            model.connectionStatus = it != null
+                            lanAdapter.notifyDataSetChanged()
+                        }
+                    }
+                }
+            },
             onPrintClick = {
-//                bTPrinterManager.printText(it.printer!!, printText.trimIndent())
+                lanPrinterManager.printText(it.printer!!, printText.trimIndent())
 
             }
         )
@@ -233,43 +252,22 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(usbReceiver, filter)
     }
 
-    private fun connectUsbPrinter(usbDevice: UsbDevice) {
-        val usbManager = getSystemService(USB_SERVICE) as UsbManager
-        AsyncUsbEscPosPrint(
-            this,
-            object : OnPrintFinished() {
-                override fun onError(
-                    asyncEscPosPrinter: AsyncEscPosPrinter,
-                    codeException: Int
-                ) {
-                    Log.e(
-                        "Async.OnPrintFinished",
-                        "AsyncEscPosPrint.OnPrintFinished : An error occurred !"
-                    )
-                }
-
-                override fun onSuccess(asyncEscPosPrinter: AsyncEscPosPrinter) {
-                    Log.i(
-                        "Async.OnPrintFinished",
-                        "AsyncEscPosPrint.OnPrintFinished : Print is finished !"
-                    )
-                }
-            }
-        )
-            .execute(
-                getAsyncEscPosPrinter(
-                    UsbConnection(
-                        usbManager,
-                        usbDevice
-                    )
-                )
-            )
-    }
-
     /*==============================================================================================
     =========================================TCP PART===============================================
     ==============================================================================================*/
-    fun printTcp() {
+
+    private fun addLanDevice() {
+        val model = LANDevicesModel(
+            TcpConnection(
+                binding.edittextTcpIp.text.toString(),
+                binding.edittextTcpPort.text.toString().toInt()
+            ), address = binding.edittextTcpIp.text.toString()
+        )
+        lanDeviceList.add(model)
+        lanAdapter.setList(lanDeviceList)
+    }
+
+    fun connectLan(connection: TcpConnection) {
         try {
             AsyncTcpEscPosPrint(
                 this,
@@ -293,12 +291,7 @@ class MainActivity : AppCompatActivity() {
                 }
             )
                 .execute(
-                    getAsyncEscPosPrinter(
-                        TcpConnection(
-                            binding.edittextTcpIp.text.toString(),
-                            binding.edittextTcpPort.text.toString().toInt()
-                        )
-                    )
+                    getAsyncEscPosPrinter(connection)
                 )
         } catch (e: NumberFormatException) {
             AlertDialog.Builder(this)
