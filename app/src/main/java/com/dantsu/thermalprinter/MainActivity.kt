@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -38,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var printerDeviceAdapter: PrinterDeviceAdapter
     private var printerDeviceList: ArrayList<PrinterDevicesModel> = arrayListOf()
+    private lateinit var appPreference: AppPreference
 
     private val permissions = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> arrayOf(
@@ -75,9 +75,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        appPreference = AppPreference(this)
+
         initViews()
         checkBluetoothPermissions()
         initUsb()
+        initLan()
     }
 
     private fun checkBluetoothPermissions() {
@@ -120,14 +123,6 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 }
-
-//                lanPrinterManager.connectPrinter(it1) {
-//                    lifecycleScope.launch(Dispatchers.Main) {
-//                        model.printer = it
-//                        model.connectionStatus = it != null
-//                        lanAdapter.notifyDataSetChanged()
-//                    }
-//                }
             },
             onPrintClick = {
                 printerManager.printText(it.printer!!, printText.trimIndent())
@@ -207,6 +202,23 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(usbReceiver, filter)
     }
 
+    private fun initLan() {
+        val list = appPreference.getIpList().map { ip ->
+            PrinterDevicesModel(
+                printerType = PrinterType.LAN,
+                ip,
+                tcpConnection = TcpConnection(
+                    ip,
+                    9100
+                ),
+                address = ip
+            )
+        }
+
+        printerDeviceList.addAll(list)
+        printerDeviceAdapter.notifyDataSetChanged()
+    }
+
     private fun addLanDevice(ip: String) {
         val model = PrinterDevicesModel(
             printerType = PrinterType.LAN,
@@ -234,8 +246,12 @@ class MainActivity : AppCompatActivity() {
         dialogBinding.btAdd.setOnClickListener {
             val ipRegex = """^([0-9]{1,3}\.){3}[0-9]{1,3}$""".toRegex()
             val ip = dialogBinding.etAddress.text.toString()
-            if (ip.matches(ipRegex) && ip.split('.').none { it.toInt() > 255 }) {
+
+            if (printerDeviceList.any { it.address == ip }) {
+                Toast.makeText(this, "Address already exist", Toast.LENGTH_LONG).show()
+            } else if (ip.matches(ipRegex) && ip.split('.').none { it.toInt() > 255 }) {
                 addLanDevice(ip)
+                appPreference.saveIp(ip)
                 dialog.dismiss()
             } else {
                 Toast.makeText(this, "Invalid address", Toast.LENGTH_LONG).show()
