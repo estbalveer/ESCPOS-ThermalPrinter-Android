@@ -2,31 +2,27 @@ package com.dantsu.thermalprinter
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.bluetooth.BluetoothDevice
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
-import android.util.DisplayMetrics
-import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.dantsu.escposprinter.connection.DeviceConnection
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import com.dantsu.escposprinter.connection.tcp.TcpConnection
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections
-import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import com.dantsu.thermalprinter.adapter.PrinterDeviceAdapter
-import com.dantsu.thermalprinter.async.AsyncEscPosPrint.OnPrintFinished
-import com.dantsu.thermalprinter.async.AsyncEscPosPrinter
-import com.dantsu.thermalprinter.async.AsyncTcpEscPosPrint
 import com.dantsu.thermalprinter.databinding.ActivityMainBinding
+import com.dantsu.thermalprinter.databinding.DialogAddBinding
 import com.dantsu.thermalprinter.manager.BTReceiver
 import com.dantsu.thermalprinter.manager.PrinterManager
 import com.dantsu.thermalprinter.manager.USBReceiver
@@ -34,8 +30,6 @@ import com.dantsu.thermalprinter.model.PrinterDevicesModel
 import com.dantsu.thermalprinter.model.PrinterType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -80,8 +74,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        binding.btAdd.setOnClickListener { view: View? -> addLanDevice() }
 
         initViews()
         checkBluetoothPermissions()
@@ -215,17 +207,43 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(usbReceiver, filter)
     }
 
-    private fun addLanDevice() {
+    private fun addLanDevice(ip: String) {
         val model = PrinterDevicesModel(
             printerType = PrinterType.LAN,
-            binding.edittextTcpIp.text.toString(),
+            ip,
             tcpConnection = TcpConnection(
-                binding.edittextTcpIp.text.toString(),
-                binding.edittextTcpPort.text.toString().toInt()
+                ip,
+                9100
             ),
-            address = binding.edittextTcpIp.text.toString()
+            address = ip
         )
         printerDeviceList.add(model)
         printerDeviceAdapter.notifyDataSetChanged()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        val menuView = menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val dialog = AlertDialog.Builder(this).create()
+        val dialogBinding = DialogAddBinding.inflate(layoutInflater)
+        dialog.setView(dialogBinding.root)
+
+        dialogBinding.btAdd.setOnClickListener {
+            val ipRegex = """^([0-9]{1,3}\.){3}[0-9]{1,3}$""".toRegex()
+            val ip = dialogBinding.etAddress.text.toString()
+            if (ip.matches(ipRegex) && ip.split('.').none { it.toInt() > 255 }) {
+                addLanDevice(ip)
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this, "Invalid address", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        dialog.show()
+
+        return true
     }
 }
