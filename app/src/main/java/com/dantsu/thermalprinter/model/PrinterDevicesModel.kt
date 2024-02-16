@@ -24,4 +24,6 @@ class PrinterDevicesModel(
 
     var tcpConnection: TcpConnection? = null,
     var address: String = "",
+
+    var loading: Boolean = false
 )

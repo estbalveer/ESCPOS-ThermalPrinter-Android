@@ -28,6 +28,14 @@ import kotlinx.coroutines.launch
 
 class PrinterManager {
 
+    companion object {
+        val CONNECTION_SUCCESS = 1
+        val CONNECTION_FAIL = 2
+
+        val PRINT_SUCCESS = 1
+        val PRINT_FAIL = 2
+    }
+
     private val ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION"
     private var onPermissionGranted: (usbDevice: UsbDevice?) -> Unit = {}
 
@@ -67,7 +75,7 @@ class PrinterManager {
 
     fun connectPrinter(
         deviceConnection: DeviceConnection,
-        callback: (printer: EscPosPrinter?) -> Unit
+        callback: (printer: EscPosPrinter?, status: Int) -> Unit
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -77,25 +85,28 @@ class PrinterManager {
                     EscPosCharsetEncoding("windows-1252", 16)
                 )
                 Log.v("Printer", "Printer $printer")
-                callback(printer)
+                callback(printer, CONNECTION_SUCCESS)
                 // Your code that may throw EscPosConnectionException, EscPosParserException, EscPosEncodingException, or InterruptedException
             } catch (e: EscPosConnectionException) {
                 e.printStackTrace()
-                callback(null)
+                callback(null, CONNECTION_FAIL)
             } catch (e: InterruptedException) {
-                callback(null)
+                callback(null, CONNECTION_FAIL)
                 e.printStackTrace()
             } catch (e: Exception) {
-                callback(null)
+                callback(null, CONNECTION_FAIL)
                 e.printStackTrace()
             }
         }
     }
 
-    fun printText(printer: EscPosPrinter, context: Context) {
+    fun printText(
+        context: Context,
+        printer: EscPosPrinter,
+        callback: (status: Int) -> Unit
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-
                 val drawable = context.applicationContext.resources
                     .getDrawableForDensity(
                         R.drawable.receipt_logo,
@@ -107,19 +118,25 @@ class PrinterManager {
                     drawable
                 )
 
-                printer.printFormattedTextAndCut(kitchenReceipt().toString())
-
+                printer.printFormattedTextAndCut(orderReceipt().toString())
+                callback(PRINT_SUCCESS)
             } catch (e: EscPosConnectionException) {
+                callback(PRINT_FAIL)
                 e.printStackTrace()
             } catch (e: EscPosParserException) {
+                callback(PRINT_FAIL)
                 e.printStackTrace()
             } catch (e: EscPosEncodingException) {
+                callback(PRINT_FAIL)
                 e.printStackTrace()
             } catch (e: EscPosBarcodeException) {
+                callback(PRINT_FAIL)
                 e.printStackTrace()
             } catch (e: InterruptedException) {
+                callback(PRINT_FAIL)
                 e.printStackTrace()
             } catch (e: Exception) {
+                callback(PRINT_FAIL)
                 e.printStackTrace()
             }
         }

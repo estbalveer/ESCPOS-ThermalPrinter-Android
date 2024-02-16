@@ -22,9 +22,9 @@ class PrinterDeviceAdapter(val context: Context) :
     RecyclerView.Adapter<PrinterDeviceAdapter.MyViewHolder>() {
 
     private var list: ArrayList<PrinterDevicesModel> = arrayListOf()
-    var onConnectClick: (model: PrinterDevicesModel) -> Unit = {}
-    var onPrintClick: (model: PrinterDevicesModel) -> Unit = {}
-    var onRequestClick: (model: PrinterDevicesModel) -> Unit = {}
+    var onConnectClick: ((model: PrinterDevicesModel, index: Int) -> Unit)? = null
+    var onPrintClick: ((model: PrinterDevicesModel, index: Int) -> Unit)? = null
+    var onRequestClick: ((model: PrinterDevicesModel, index: Int) -> Unit)? = null
 
     val green = ContextCompat.getColor(context, android.R.color.holo_green_dark);
     val red = ContextCompat.getColor(context, android.R.color.holo_red_dark);
@@ -35,9 +35,9 @@ class PrinterDeviceAdapter(val context: Context) :
     }
 
     fun setClickListener(
-        onConnectClick: (model: PrinterDevicesModel) -> Unit = {},
-        onPrintClick: (model: PrinterDevicesModel) -> Unit = {},
-        onRequestClick: (model: PrinterDevicesModel) -> Unit = {}
+        onConnectClick: (model: PrinterDevicesModel, index: Int) -> Unit,
+        onPrintClick: (model: PrinterDevicesModel, index: Int) -> Unit,
+        onRequestClick: (model: PrinterDevicesModel, index: Int) -> Unit
     ) {
         this.onConnectClick = onConnectClick
         this.onPrintClick = onPrintClick
@@ -68,6 +68,8 @@ class PrinterDeviceAdapter(val context: Context) :
             }
             iconView.setImageResource(icon)
             btPermission.visibility = View.GONE
+            loading.visibility = View.GONE
+
             if (model.connectionStatus) {
                 ImageViewCompat.setImageTintList(iconView, ColorStateList.valueOf(green))
                 btConnect.visibility = View.GONE
@@ -84,9 +86,16 @@ class PrinterDeviceAdapter(val context: Context) :
                 btPrint.visibility = View.GONE
             }
 
-            btConnect.setOnClickListener { onConnectClick(model) }
-            btPrint.setOnClickListener { onPrintClick(model) }
-            btPermission.setOnClickListener { onRequestClick(model) }
+            if (model.loading) {
+                loading.visibility = View.VISIBLE
+                btPermission.visibility = View.GONE
+                btConnect.visibility = View.GONE
+                btPrint.visibility = View.GONE
+            }
+
+            btConnect.setOnClickListener { onConnectClick?.invoke(model, position) }
+            btPrint.setOnClickListener { onPrintClick?.invoke(model, position) }
+            btPermission.setOnClickListener { onRequestClick?.invoke(model, position) }
         }
     }
 }

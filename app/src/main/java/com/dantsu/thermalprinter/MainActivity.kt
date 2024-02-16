@@ -88,6 +88,10 @@ class MainActivity : AppCompatActivity() {
         initBluetooth()
     }
 
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun initViews() {
         // bluetooth related work
         val printerManager = PrinterManager()
@@ -97,27 +101,46 @@ class MainActivity : AppCompatActivity() {
         printerDeviceAdapter.setList(printerDeviceList)
 
         printerDeviceAdapter.setClickListener(
-            onRequestClick = {
-                it.usbConnection?.let { it1 -> printerManager.askUsbPermission(this, it1) }
+            onRequestClick = { model, index ->
+                model.usbConnection?.let { it1 -> printerManager.askUsbPermission(this, it1) }
             },
-            onConnectClick = { model ->
+            onConnectClick = { model, index ->
+
+                model.loading = true
+                printerDeviceAdapter.notifyItemChanged(index)
+
                 val connection = when (model.printerType) {
                     PrinterType.BLUETOOTH -> model.bluetoothConnection
                     PrinterType.USB -> model.usbConnection
                     PrinterType.LAN -> model.tcpConnection
                 }
-                printerManager.connectPrinter(connection!!) {
+                printerManager.connectPrinter(connection!!) { printer, status ->
                     lifecycleScope.launch(Dispatchers.Main) {
-                        model.printer = it
-                        model.connectionStatus = it != null
-                        printerDeviceAdapter.notifyDataSetChanged()
-                    }
 
+                        if (status == PrinterManager.CONNECTION_SUCCESS) {
+                            model.printer = printer
+                            model.connectionStatus = printer != null
+                        } else {
+                            showToast("Error in connection")
+                        }
+                        model.loading = false
+                        printerDeviceAdapter.notifyItemChanged(index)
+
+                    }
                 }
             },
-            onPrintClick = {
-                printerManager.printText(it.printer!!, this)
-
+            onPrintClick = { model, index ->
+                model.loading = true
+                printerDeviceAdapter.notifyItemChanged(index)
+                printerManager.printText(this, model.printer!!) { status ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        if (status != PrinterManager.PRINT_SUCCESS) {
+                            showToast("Error in connection")
+                        }
+                        model.loading = false
+                        printerDeviceAdapter.notifyItemChanged(index)
+                    }
+                }
             }
         )
 
