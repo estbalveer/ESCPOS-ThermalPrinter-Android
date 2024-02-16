@@ -61,15 +61,6 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-    private val printText = """
-                [L]
-                [C]<u><font size='big'>ORDER N°045</font></u>
-                [C]<u><font size='big'>ORDER N°045</font></u>
-                [C]<u><font size='big'>ORDER N°045</font></u>
-                [C]<u><font size='big'>ORDER N°045</font></u>
-                [C]<u><font size='big'>ORDER N°045</font></u>
-                """
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -125,7 +116,7 @@ class MainActivity : AppCompatActivity() {
                 }
             },
             onPrintClick = {
-                printerManager.printText(it.printer!!, printText.trimIndent())
+                printerManager.printText(it.printer!!, this)
 
             }
         )

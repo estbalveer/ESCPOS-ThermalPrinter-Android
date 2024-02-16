@@ -9,6 +9,7 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Parcelable
+import android.util.DisplayMetrics
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.dantsu.escposprinter.EscPosCharsetEncoding
@@ -19,6 +20,8 @@ import com.dantsu.escposprinter.exceptions.EscPosBarcodeException
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException
 import com.dantsu.escposprinter.exceptions.EscPosEncodingException
 import com.dantsu.escposprinter.exceptions.EscPosParserException
+import com.dantsu.escposprinter.textparser.PrinterTextParserImg
+import com.dantsu.thermalprinter.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,7 +73,7 @@ class PrinterManager {
             try {
                 val printer = EscPosPrinter(
                     deviceConnection,
-                    203, 48f, 32,
+                    203, 72f, 48,
                     EscPosCharsetEncoding("windows-1252", 16)
                 )
                 Log.v("Printer", "Printer $printer")
@@ -89,11 +92,34 @@ class PrinterManager {
         }
     }
 
-    fun printText(printer: EscPosPrinter, textsToPrint: String) {
+    fun printText(printer: EscPosPrinter, context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                printer.printFormattedTextAndCut(textsToPrint)
-//            Thread.sleep(500)
+
+                val drawable = context.applicationContext.resources
+                    .getDrawableForDensity(
+                        R.drawable.receipt_logo,
+                        DisplayMetrics.DENSITY_MEDIUM
+                    )
+
+                val image = PrinterTextParserImg.bitmapToHexadecimalString(
+                    printer,
+                    drawable
+                )
+
+                val printerText = PrinterText().apply {
+                    newLine()
+                    newLine()
+                    text("FoodZone, Vijay Nagar", align = Alignment.LEFT)
+                    text("Indore")
+                    text("Tel: 1234567654")
+                    text("Email: balveer.dhanoriya@encoresky.com")
+                    text("Date & Time: 2024-02-15 16:21:40").newLine()
+                    text("Invoice No: 39583939").newLine()
+                }
+
+                printer.printFormattedTextAndCut(printerText.toString())
+
             } catch (e: EscPosConnectionException) {
                 e.printStackTrace()
             } catch (e: EscPosParserException) {
