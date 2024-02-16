@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -151,6 +152,21 @@ class MainActivity : AppCompatActivity() {
                     it.hasPermission = true
                     printerDeviceAdapter.notifyDataSetChanged()
                 }
+        }
+
+        binding.btPrintAll.setOnClickListener {
+            val connectedList = printerDeviceList.filter { it.printer != null }
+            if (connectedList.isEmpty()) {
+                showToast("No printer connected")
+                return@setOnClickListener
+            }
+
+//            binding.pbPrintAll.visibility = View.VISIBLE
+            connectedList.forEach {
+                printerManager.printText(this, it.printer!!) {
+//                    binding.pbPrintAll.visibility = View.GONE
+                }
+            }
         }
     }
 
