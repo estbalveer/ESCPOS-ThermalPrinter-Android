@@ -26,7 +26,17 @@ class PrinterText {
     private var formattedText = ""
 
     fun row(vararg text: String): PrinterText {
-        formattedText += text.asList().joinToString { it }
+        formattedText += text.asList().joinToString(" ") { it }
+        formattedText += "\n"
+        return this
+    }
+
+    fun row2(textLeft: String, textRight: String): PrinterText {
+        formattedText += textRow(textLeft, align = Alignment.LEFT) + textRow(
+            textRight,
+            align = Alignment.RIGHT
+        )
+        formattedText += "\n"
         return this
     }
 
@@ -36,8 +46,10 @@ class PrinterText {
         fontSize: FontSize = FontSize.NORMAL,
         bold: Boolean = false
     ): PrinterText {
-        textRow(text, align, fontSize, bold)
-        formattedText += "\n"
+        val alignValue = align.value
+        val fontSizeValue = fontSize.value
+        val result = "$alignValue<font size='$fontSizeValue'>$text</font>"
+        formattedText += "$result\n"
         return this
     }
 
@@ -46,16 +58,19 @@ class PrinterText {
         align: Alignment = Alignment.CENTER,
         fontSize: FontSize = FontSize.NORMAL,
         bold: Boolean = false
-    ): PrinterText {
+    ): String {
         val alignValue = align.value
         val fontSizeValue = fontSize.value
-        val result = "$alignValue<font size='$fontSizeValue'>$text</font>"
-        formattedText += result
-        return this
+        return "$alignValue<font size='$fontSizeValue'>$text</font>"
     }
 
     fun newLine(): PrinterText {
         formattedText += "[L]\n"
+        return this
+    }
+
+    fun divider(): PrinterText {
+        text("-".repeat(48))
         return this
     }
 

@@ -107,18 +107,7 @@ class PrinterManager {
                     drawable
                 )
 
-                val printerText = PrinterText().apply {
-                    newLine()
-                    newLine()
-                    text("FoodZone, Vijay Nagar", align = Alignment.LEFT)
-                    text("Indore")
-                    text("Tel: 1234567654")
-                    text("Email: balveer.dhanoriya@encoresky.com")
-                    text("Date & Time: 2024-02-15 16:21:40").newLine()
-                    text("Invoice No: 39583939").newLine()
-                }
-
-                printer.printFormattedTextAndCut(printerText.toString())
+                printer.printFormattedTextAndCut(kitchenReceipt().toString())
 
             } catch (e: EscPosConnectionException) {
                 e.printStackTrace()
@@ -133,6 +122,65 @@ class PrinterManager {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private fun orderReceipt(): PrinterText {
+        return PrinterText().apply {
+            text("FoodZone, Vijay Nagar")
+            text("Indore")
+            text("Tel: 1234567654")
+            text("Email: balveer.dhanoriya@encoresky.com")
+            text("Date & Time: 2024-02-15 16:21:40")
+            text("Invoice No: 39583939")
+            newLine()
+            text("ORDER RECEIPT")
+            divider()
+            row2("Qty Item", "Price")
+            divider()
+            row2("2 Cheese Burger ($22.03)", "$44.06")
+            row2("1 Veggie Burger ($22.03)", "$415.06")
+            divider()
+            row2("Total Items", "2")
+            row2("SubTotal", "$59.06")
+            row2("Srv Charges (10.0%)", "$5.91")
+            row2("GST (10.0%) (Inclusive)", "$4.81")
+            row2("Rounding", "$0.00")
+            row2("Cash Received", "$0.00")
+            row2("Change", "$0.00")
+            row2("Total", "$64.97")
+            row2("Payment Method", "VISA")
+            divider()
+            text("Thank You!")
+            text("Powered by Warely POS")
+            newLine()
+            newLine()
+        }
+    }
+
+    private fun kitchenReceipt(): PrinterText {
+        return PrinterText().apply {
+            text("### KITCHEN RECEIPT ###")
+            text("Invoice No: 202402164526")
+            newLine()
+            divider()
+            text("COMMON")
+            divider()
+            newLine()
+            text("--- DINE-IN ---", fontSize = FontSize.BIG)
+            newLine()
+            text("2 Grill Chicken", fontSize = FontSize.BIG, align = Alignment.LEFT)
+            newLine()
+            text("1 Tag Number #40", fontSize = FontSize.BIG, align = Alignment.LEFT)
+            newLine()
+            text("1 Mix Veg", fontSize = FontSize.BIG, align = Alignment.LEFT)
+            newLine()
+            divider()
+            row2("Check No: 0621", "2024-02-16 14:01:25")
+            newLine()
+            text("Powered by Warely POS")
+            newLine()
+            newLine()
         }
     }
 }
