@@ -25,6 +25,9 @@ import com.dantsu.thermalprinter.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.io.IOException
+import java.net.InetAddress
 
 class PrinterManager {
 
@@ -100,6 +103,22 @@ class PrinterManager {
         }
     }
 
+    fun isReachable(ip: String, callback: (status: Boolean) -> Unit) = runBlocking {
+        CoroutineScope(Dispatchers.IO).launch {
+            val address = InetAddress.getByName(ip)
+            try {
+                address.isReachable(1000)
+                CoroutineScope(Dispatchers.Main).launch {
+                    callback(true)
+                }
+            } catch (e: IOException) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    callback(true)
+                }
+            }
+        }
+    }
+
     fun printText(
         context: Context,
         printer: EscPosPrinter,
@@ -117,6 +136,8 @@ class PrinterManager {
                     printer,
                     drawable
                 )
+
+
 
                 printer.printFormattedTextAndCut(orderReceipt().toString())
                 callback(PRINT_SUCCESS)

@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -39,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var printerDeviceAdapter: PrinterDeviceAdapter
     private var printerDeviceList: ArrayList<PrinterDevicesModel> = arrayListOf()
     private lateinit var appPreference: AppPreference
+    private val printerManager = PrinterManager()
 
     private val permissions = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> arrayOf(
@@ -95,8 +95,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews() {
         // bluetooth related work
-        val printerManager = PrinterManager()
-
         printerDeviceAdapter = PrinterDeviceAdapter(this)
         binding.rvDeviceList.adapter = printerDeviceAdapter
         printerDeviceAdapter.setList(printerDeviceList)
@@ -168,7 +166,31 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+
+        binding.btPrintAny.setOnClickListener {
+            val connectedList = printerDeviceList.filter { it.printer != null }
+            if (connectedList.isEmpty()) {
+                showToast("No printer connected")
+                return@setOnClickListener
+            }
+            tryPrint(connectedList, 0)
+        }
     }
+
+    private fun tryPrint(list: List<PrinterDevicesModel>, index: Int) {
+        if (list.isEmpty() || list.size == index) {
+            showToast("Printing failed")
+            return
+        }
+
+        printerManager.printText(this, list[index].printer!!) { status ->
+            if (status != PrinterManager.PRINT_SUCCESS) {
+                tryPrint(list, index + 1)
+            }
+        }
+    }
+
 
     @SuppressLint("MissingPermission")
     private fun initBluetooth() {
