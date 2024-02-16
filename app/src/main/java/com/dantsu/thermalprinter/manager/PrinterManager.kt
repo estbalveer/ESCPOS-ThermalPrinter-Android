@@ -85,7 +85,7 @@ class PrinterManager {
                 val printer = EscPosPrinter(
                     deviceConnection,
                     203, 72f, 48,
-                    EscPosCharsetEncoding("windows-1252", 16)
+                    EscPosCharsetEncoding("GB18030", 16)
                 )
                 Log.v("Printer", "Printer $printer")
                 callback(printer, CONNECTION_SUCCESS)
@@ -176,7 +176,7 @@ class PrinterManager {
             divider()
             row2("Qty Item", "Price")
             divider()
-            row2("2 Cheese Burger ($22.03)", "$44.06")
+            row2("2 Cheese Burger- 鸡肉汉堡", "$44.06")
             row2("1 Veggie Burger ($22.03)", "$415.06")
             divider()
             row2("Total Items", "2")
